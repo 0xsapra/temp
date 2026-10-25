@@ -1,0 +1,49 @@
+# Copy into .github/workflows only in a disposable repository you control.
+name: actions-results-carrier-test
+on: workflow_dispatch
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  carrier:
+    runs-on: ubuntu-latest
+    outputs:
+      job_id: ${{ steps.carrier.outputs['job-id'] }}
+      repository: ${{ steps.carrier.outputs.repository }}
+      body_base64: ${{ steps.carrier.outputs['body-base64'] }}
+      body_sha256: ${{ steps.carrier.outputs['body-sha256'] }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: carrier
+        uses: ./research/harnesses/actions-results-log-carrier
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+  post_completion_probe:
+    needs: carrier
+    if: ${{ always() && needs.carrier.outputs.job_id != '' && needs.carrier.outputs.body_base64 != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: probe
+        uses: ./research/harnesses/actions-results-log-carrier
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PROBE_ONLY: "1"
+          PROBE_ATTEMPTS: "6"
+          PROBE_DELAY_MS: "2000"
+          TARGET_JOB_ID: ${{ needs.carrier.outputs.job_id }}
+          EXPECTED_BODY_BASE64: ${{ needs.carrier.outputs.body_base64 }}
+          REQUIRE_REPLAYABLE: "1"
+      - name: Show sanitized result
+        if: ${{ always() }}
+        env:
+          REPO_CASSETTE_REPOSITORY: ${{ needs.carrier.outputs.repository }}
+          BODY_SHA256: ${{ needs.carrier.outputs.body_sha256 }}
+          PROBE_RESULT: ${{ steps.probe.outputs['probe-result'] }}
+        run: |
+          printf 'repository=%s\n' "$REPO_CASSETTE_REPOSITORY"
+          printf 'body_sha256=%s\n' "$BODY_SHA256"
+          printf 'probe=%s\n' "$PROBE_RESULT"
