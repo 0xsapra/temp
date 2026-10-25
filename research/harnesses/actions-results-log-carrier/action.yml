@@ -1,0 +1,20 @@
+name: Actions Results job-log carrier probe
+description: Pre-creates the current job log with controlled bytes for an authorized research run.
+
+outputs:
+  job-id:
+    description: Numeric REST ID of the carrier job.
+  repository:
+    description: Path-traversal repository value for Repo Cassette.
+  body-base64:
+    description: Exact bytes placed in the Results log blob, encoded as base64.
+  body-sha256:
+    description: SHA-256 of the exact log bytes.
+  manifest:
+    description: Path to the local JSON manifest with the HAR and probe result.
+  probe-result:
+    description: Sanitized JSON describing the REST redirect and final headers.
+
+runs:
+  using: node20
+  main: index.mjs
